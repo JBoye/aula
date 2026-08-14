@@ -34,6 +34,12 @@ _LOGGER = logging.getLogger(__name__)
 # schools that do not expose 0030 to guardians.
 MU_OPGAVER_WIDGETS = ("0030", "0023")
 
+# Widgets that can mint a token for the Min Uddannelse "ugebrev" endpoint,
+# in order of preference. 0029 is the dedicated "Ugenoter" widget; 0023
+# ("MinUddannelse - SSO") is accepted by the same endpoint and is available at
+# schools that do not expose 0029 to guardians.
+MU_UGEPLAN_WIDGETS = ("0029", "0023")
+
 # Widgets that can mint a token for the EasyIQ Ugeplan endpoint,
 # in order of preference.
 EASYIQ_WIDGETS = ("0001", "0128", "00142", "0142")
@@ -1058,23 +1064,27 @@ class Client:
 
             if len(self.widgets) == 0:
                 self.get_widgets()
+            mu_uge_widget = next(
+                (widget for widget in MU_UGEPLAN_WIDGETS if widget in self.widgets),
+                None,
+            )
             if (
-                "0029" not in self.widgets
+                mu_uge_widget is None
                 and "0004" not in self.widgets
                 and "0062" not in self.widgets
                 and not any(widget in self.widgets for widget in EASYIQ_WIDGETS)
             ):
                 _LOGGER.error(
-                    "You have enabled ugeplaner, but we cannot find any supported widgets (0029,0004,0062,EasyIQ) in Aula."
+                    "You have enabled ugeplaner, but we cannot find any supported widgets (0029,0023,0004,0062,EasyIQ) in Aula."
                 )
-            if "0029" in self.widgets and "0004" in self.widgets:
+            if mu_uge_widget is not None and "0004" in self.widgets:
                 _LOGGER.warning(
                     "Multiple sources for ugeplaner is untested and might cause problems."
                 )
 
             def ugeplan(week, thisnext):
-                if "0029" in self.widgets:
-                    token = self.get_token("0029")
+                if mu_uge_widget is not None:
+                    token = self.get_token(mu_uge_widget)
                     get_payload = (
                         "/ugebrev?assuranceLevel=2&childFilter="
                         + childUserIds
