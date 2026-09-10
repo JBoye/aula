@@ -4,6 +4,7 @@ import json
 
 from custom_components.aula.client import (
     MU_OPGAVER_WIDGETS,
+    MU_UGEPLAN_WIDGETS,
     EASYIQ_WIDGETS,
     decode_mu_deeplink,
     format_mu_opgaver,
@@ -40,6 +41,28 @@ def test_widget_selection__falls_back_to_0023():
 def test_widget_selection__none_available():
     widgets = {"0029": "MinUddannelse – Ugenoter"}
     selected = next((w for w in MU_OPGAVER_WIDGETS if w in widgets), None)
+    assert selected is None
+
+
+def test_ugeplan_widget_preference_order():
+    assert MU_UGEPLAN_WIDGETS == ("0029", "0023")
+
+
+def test_ugeplan_widget_selection__prefers_0029():
+    widgets = {"0023": "MinUddannelse - SSO", "0029": "MinUddannelse – Ugenoter"}
+    selected = next((w for w in MU_UGEPLAN_WIDGETS if w in widgets), None)
+    assert selected == "0029"
+
+
+def test_ugeplan_widget_selection__falls_back_to_0023():
+    widgets = {"0023": "MinUddannelse - SSO", "0072": "MU Elev - fravær"}
+    selected = next((w for w in MU_UGEPLAN_WIDGETS if w in widgets), None)
+    assert selected == "0023"
+
+
+def test_ugeplan_widget_selection__none_available():
+    widgets = {"0001": "EasyIQ"}
+    selected = next((w for w in MU_UGEPLAN_WIDGETS if w in widgets), None)
     assert selected is None
 
 
