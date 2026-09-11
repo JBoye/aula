@@ -142,6 +142,7 @@ class AulaSensor(Entity):
         3 = KOMMET/TIL STEDE
         4 = PÅ TUR
         5 = SOVER
+        7 = SFO
         8 = HENTET/GÅET
         """
         if self._client.presence[str(self._child["id"])] == 1:
@@ -153,7 +154,7 @@ class AulaSensor(Entity):
                 "På tur",
                 "Sover",
                 "6",
-                "7",
+                "SFO",
                 "Gået",
                 "9",
                 "10",
