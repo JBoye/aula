@@ -1,0 +1,36 @@
+{
+    "Events": [
+        {
+            "start": "2026/09/07 08:00",
+            "end": "2026/09/07 09:30",
+            "itemType": "5",
+            "title": "Idræt",
+            "ownername": "Peter Petersen",
+            "description": "Husk indendørssko."
+        },
+        {
+            "start": "2026/09/07 10:00",
+            "end": "2026/09/07 11:30",
+            "itemType": "1",
+            "title": "",
+            "ownername": "Anna Andersen",
+            "description": "Vi arbejder med former."
+        },
+        {
+            "start": "2026/09/08 08:00",
+            "end": "2026/09/10 15:00",
+            "itemType": "1",
+            "title": "Lejrskole",
+            "ownername": "Anna Andersen",
+            "description": "Husk pakket taske."
+        },
+        {
+            "start": "not-a-date",
+            "end": "2026/09/09 09:00",
+            "itemType": "1",
+            "title": "Ugyldig",
+            "ownername": "Anna Andersen",
+            "description": "Skal ignoreres."
+        }
+    ]
+}

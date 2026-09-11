@@ -1,3 +1,4 @@
+from .client import EMPTY_UGEPLAN
 from .const import DOMAIN
 import logging
 from datetime import datetime, timedelta
@@ -230,13 +231,13 @@ class AulaSensor(Entity):
                     self._child["name"].split()[0]
                 ]
             except:
-                attributes["ugeplan"] = "Not available"
+                attributes["ugeplan"] = EMPTY_UGEPLAN
             try:
                 attributes["ugeplan_next"] = self._client.ugepnext_attr[
                     self._child["name"].split()[0]
                 ]
             except:
-                attributes["ugeplan_next"] = "Not available"
+                attributes["ugeplan_next"] = EMPTY_UGEPLAN
                 _LOGGER.debug(
                     "Could not get ugeplan for next week for child "
                     + str(self._child["name"].split()[0])

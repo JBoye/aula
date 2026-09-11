@@ -1,0 +1,54 @@
+[
+    {
+        "date": "mandag 28. nov.",
+        "tasks": [
+            {
+                "id": 1,
+                "type": "comment",
+                "author": "Mette Mettesen",
+                "pill": "Dansk",
+                "content": "1. lektion: morgenbånd med læsning."
+            }
+        ]
+    },
+    {
+        "date": "tirsdag 29. nov.",
+        "tasks": [
+            {
+                "id": 2,
+                "type": "assignment",
+                "author": "Mette Mettesen",
+                "pill": "Matematik",
+                "title": "Aflever opgave 3 i Kontext."
+            }
+        ]
+    },
+    {
+        "date": "onsdag 30. nov.",
+        "tasks": [
+            {
+                "id": 3,
+                "type": "comment",
+                "author": "Mette Mettesen",
+                "pill": "Ingen fag tilknyttet",
+                "content": "Husk gymnastiktøj."
+            }
+        ]
+    },
+    {
+        "date": "torsdag 1. dec.",
+        "tasks": []
+    },
+    {
+        "date": "fredag 2. dec.",
+        "tasks": [
+            {
+                "id": 4,
+                "type": "quiz",
+                "author": "Mette Mettesen",
+                "pill": "Dansk",
+                "content": "Ukendt opgavetype."
+            }
+        ]
+    }
+]
