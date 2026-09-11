@@ -201,7 +201,7 @@ def parse_mu_ugebrev_html(indhold, week):
             flush_lesson()
             text = node.get_text(" ", strip=True)
             day, _, _ = text.partition(" ")
-            current_day = {"day": day, "date": _iso_date_for_week_day(week, day), "lessons": []}
+            current_day = {"day": day, "date": _iso_date_for_week_day(week, day), "lessons": [], "notices": []}
             days.append(current_day)
         elif name == "b":
             flush_lesson()
@@ -220,6 +220,10 @@ def build_easyiq_skoleportal_ugeplan(events_list, week):
     """Group raw EasyIQ Skoleportal CalendarGetWeekplanEvents items into the shared ugeplan schema."""
     events_by_day = {}
     notices = []
+
+    def day_bucket(start_dt):
+        day_key = (start_dt.date(), DANISH_WEEKDAYS[start_dt.weekday()])
+        return events_by_day.setdefault(day_key, {"lessons": [], "notices": []})
 
     for item in events_list:
         if not isinstance(item, dict):
@@ -243,16 +247,11 @@ def build_easyiq_skoleportal_ugeplan(events_list, week):
         end_dt = parse_dt(end_str)
 
         if start_dt and not is_notice:
-            day_name = DANISH_WEEKDAYS[start_dt.weekday()]
-            day_date = start_dt.date()
             time_str = start_dt.strftime("%H:%M")
             if end_dt:
                 time_str += f"-{end_dt.strftime('%H:%M')}"
 
-            day_key = (day_date, day_name)
-            if day_key not in events_by_day:
-                events_by_day[day_key] = []
-            events_by_day[day_key].append(
+            day_bucket(start_dt)["lessons"].append(
                 {
                     "time": time_str,
                     "title": title or owner,
@@ -260,12 +259,21 @@ def build_easyiq_skoleportal_ugeplan(events_list, week):
                     "teacher": owner or None,
                 }
             )
+        elif start_dt:
+            day_bucket(start_dt)["notices"].append({"title": title, "description": desc, "teacher": owner or None})
         elif title or desc:
             notices.append({"title": title, "description": desc, "teacher": owner or None})
 
     days = []
-    for (day_date, day_name), day_events in sorted(events_by_day.items(), key=lambda x: x[0][0]):
-        days.append({"day": day_name, "date": day_date.isoformat(), "lessons": day_events})
+    for (day_date, day_name), day_data in sorted(events_by_day.items(), key=lambda x: x[0][0]):
+        days.append(
+            {
+                "day": day_name,
+                "date": day_date.isoformat(),
+                "lessons": day_data["lessons"],
+                "notices": day_data["notices"],
+            }
+        )
 
     return {"week": week, "days": days, "notices": notices}
 
@@ -273,8 +281,18 @@ def build_easyiq_skoleportal_ugeplan(events_list, week):
 def build_easyiq_legacy_ugeplan(events, week):
     """Group a raw EasyIQ legacy 'Events' array into the shared ugeplan schema."""
     days_by_date = {}
-    order = []
     notices = []
+
+    def day_bucket(day_date):
+        return days_by_date.setdefault(
+            day_date,
+            {
+                "day": DANISH_WEEKDAYS[day_date.weekday()],
+                "date": day_date.isoformat(),
+                "lessons": [],
+                "notices": [],
+            },
+        )
 
     for i in events:
         if not is_correct_format(i.get("start"), "%Y/%m/%d %H:%M") or not is_correct_format(
@@ -292,17 +310,8 @@ def build_easyiq_legacy_ugeplan(events, week):
         description = i.get("description", "")
 
         if start_datetime.date() == end_datetime.date():
-            day_date = start_datetime.date()
-            day_name = DANISH_WEEKDAYS[start_datetime.weekday()]
             time_str = f"{start_datetime:%H:%M}-{end_datetime:%H:%M}"
-            if day_date not in days_by_date:
-                days_by_date[day_date] = {
-                    "day": day_name,
-                    "date": day_date.isoformat(),
-                    "lessons": [],
-                }
-                order.append(day_date)
-            days_by_date[day_date]["lessons"].append(
+            day_bucket(start_datetime.date())["lessons"].append(
                 {
                     "time": time_str,
                     "title": title or "Ugeplan",
@@ -311,7 +320,7 @@ def build_easyiq_legacy_ugeplan(events, week):
                 }
             )
         else:
-            notices.append(
+            day_bucket(start_datetime.date())["notices"].append(
                 {
                     "title": title or "Ugeplan",
                     "description": description,
@@ -319,7 +328,8 @@ def build_easyiq_legacy_ugeplan(events, week):
                 }
             )
 
-    return {"week": week, "days": [days_by_date[d] for d in order], "notices": notices}
+    days = sorted(days_by_date.values(), key=lambda d: d["date"])
+    return {"week": week, "days": days, "notices": notices}
 
 
 def build_meebook_ugeplan(week_plan, week):
@@ -349,7 +359,14 @@ def build_meebook_ugeplan(week_plan, week):
                     "teacher": teacher,
                 }
             )
-        days.append({"day": day_name, "date": _iso_date_for_week_day(week, day_name), "lessons": lessons})
+        days.append(
+            {
+                "day": day_name,
+                "date": _iso_date_for_week_day(week, day_name),
+                "lessons": lessons,
+                "notices": [],
+            }
+        )
 
     return {"week": week, "days": days, "notices": []}
 

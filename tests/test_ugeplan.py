@@ -150,6 +150,7 @@ def test_mu__bold_before_first_heading_becomes_a_notice():
         }
     ]
     assert len(result["days"]) == 1
+    assert result["days"][0]["notices"] == []
     assert result["days"][0]["lessons"][0]["title"] == "Dansk"
 
 
@@ -186,6 +187,7 @@ def test_easyiq_skoleportal__groups_and_sorts_days(easyiq_skoleportal_events):
     assert len(day2["lessons"]) == 1
     assert day2["lessons"][0]["title"] == "Boldspil"
     assert day2["lessons"][0]["teacher"] == "Peter Petersen"
+    assert day2["notices"] == []
 
 
 def test_easyiq_skoleportal__courseless_item_becomes_a_notice(easyiq_skoleportal_events):
@@ -197,17 +199,27 @@ def test_easyiq_skoleportal__courseless_item_becomes_a_notice(easyiq_skoleportal
     assert "Husk gymnastiktøj hele ugen." in notice["description"]
 
 
+def test_easyiq_skoleportal__courseless_item_with_date_becomes_a_day_notice(easyiq_skoleportal_events):
+    result = build_easyiq_skoleportal_ugeplan(easyiq_skoleportal_events, "2026-W37")
+    day1 = result["days"][0]
+    assert day1["date"] == "2026-09-07"
+    assert len(day1["notices"]) == 1
+    assert day1["notices"][0]["title"] == "Bytur"
+    assert "Husk madpakke til turen." in day1["notices"][0]["description"]
+
+
 # --- build_easyiq_legacy_ugeplan -----------------------------------------
 
 
 def test_easyiq_legacy__groups_single_day_events(easyiq_legacy_events):
     result = build_easyiq_legacy_ugeplan(easyiq_legacy_events, "2026-W37")
     assert result["week"] == "2026-W37"
-    assert len(result["days"]) == 1
+    assert len(result["days"]) == 2
 
     day = result["days"][0]
     assert day["day"] == weekday_name(2026, 9, 7)
     assert day["date"] == "2026-09-07"
+    assert day["notices"] == []
     assert day["lessons"] == [
         {
             "time": "08:00-09:30",
@@ -226,13 +238,20 @@ def test_easyiq_legacy__groups_single_day_events(easyiq_legacy_events):
 
 def test_easyiq_legacy__multi_day_event_becomes_a_notice(easyiq_legacy_events):
     result = build_easyiq_legacy_ugeplan(easyiq_legacy_events, "2026-W37")
-    assert len(result["notices"]) == 1
-    assert result["notices"][0]["description"] == "Husk pakket taske."
+    assert result["notices"] == []
+
+    day2 = result["days"][1]
+    assert day2["day"] == weekday_name(2026, 9, 8)
+    assert day2["date"] == "2026-09-08"
+    assert day2["lessons"] == []
+    assert len(day2["notices"]) == 1
+    assert day2["notices"][0]["description"] == "Husk pakket taske."
 
 
 def test_easyiq_legacy__malformed_timestamp_is_skipped(easyiq_legacy_events):
     result = build_easyiq_legacy_ugeplan(easyiq_legacy_events, "2026-W37")
     all_descriptions = [l["description"] for d in result["days"] for l in d["lessons"]]
+    all_descriptions += [n["description"] for d in result["days"] for n in d["notices"]]
     all_descriptions += [n["description"] for n in result["notices"]]
     assert "Skal ignoreres." not in all_descriptions
 
@@ -248,6 +267,7 @@ def test_meebook__comment_and_assignment_description_source(meebook_weekplan):
     mandag = result["days"][0]
     assert mandag["day"] == "Mandag"
     assert mandag["date"] == "2026-11-23"
+    assert mandag["notices"] == []
     assert mandag["lessons"][0]["title"] == "Dansk"
     assert mandag["lessons"][0]["teacher"] == "Mette Mettesen"
     assert mandag["lessons"][0]["description"] == "1. lektion: morgenbånd med læsning."
