@@ -9,6 +9,7 @@ from custom_components.aula.client import (
     build_easyiq_skoleportal_ugeplan,
     build_easyiq_legacy_ugeplan,
     build_meebook_ugeplan,
+    extract_easyiq_skoleportal_general_description,
 )
 
 
@@ -36,6 +37,11 @@ def mu_ugebrev_html():
 @pytest.fixture
 def easyiq_skoleportal_events():
     return load_json_fixture("easyiq_skoleportal_weekplan_events.json")
+
+
+@pytest.fixture
+def easyiq_skoleportal_general():
+    return load_json_fixture("easyiq_skoleportal_weekplan_general.json")
 
 
 @pytest.fixture
@@ -131,11 +137,13 @@ def test_mu__empty_indhold_returns_empty_schema():
         "week": "2026-W37",
         "days": [],
         "notices": [],
+        "general": None,
     }
     assert parse_mu_ugebrev_html(None, "2026-W37") == {
         "week": "2026-W37",
         "days": [],
         "notices": [],
+        "general": None,
     }
 
 
@@ -206,6 +214,48 @@ def test_easyiq_skoleportal__courseless_item_with_date_becomes_a_day_notice(easy
     assert len(day1["notices"]) == 1
     assert day1["notices"][0]["title"] == "Bytur"
     assert "Husk madpakke til turen." in day1["notices"][0]["description"]
+
+
+def test_easyiq_skoleportal__general_description_defaults_to_none(easyiq_skoleportal_events):
+    result = build_easyiq_skoleportal_ugeplan(easyiq_skoleportal_events, "2026-W37")
+    assert result["general"] is None
+
+
+def test_easyiq_skoleportal__general_description_is_passed_through(easyiq_skoleportal_events):
+    result = build_easyiq_skoleportal_ugeplan(easyiq_skoleportal_events, "2026-W37", "<p>God uge til jer alle.</p>")
+    assert result["general"] == "<p>God uge til jer alle.</p>"
+
+
+# --- extract_easyiq_skoleportal_general_description ----------------------
+
+
+def test_extract_general_description__returns_visible_weekplan_text(easyiq_skoleportal_general):
+    text = extract_easyiq_skoleportal_general_description(easyiq_skoleportal_general)
+    assert text == "<p>Kære forældre</p><p>God uge til jer alle.</p>"
+
+
+def test_extract_general_description__matches_by_activity_name(easyiq_skoleportal_general):
+    text = extract_easyiq_skoleportal_general_description(easyiq_skoleportal_general, activity_name="0C")
+    assert text == "<p>Kære forældre</p><p>God uge til jer alle.</p>"
+
+
+def test_extract_general_description__no_match_for_other_activity_falls_back(easyiq_skoleportal_general):
+    text = extract_easyiq_skoleportal_general_description(easyiq_skoleportal_general, activity_name="9Z")
+    assert text == "<p>Kære forældre</p><p>God uge til jer alle.</p>"
+
+
+def test_extract_general_description__invisible_entries_are_skipped():
+    weekplan_json = {
+        "WeekPlans": [
+            {"ActivityName": "0C", "Text": "<p>Skjult</p>", "IsVisible": False},
+        ]
+    }
+    assert extract_easyiq_skoleportal_general_description(weekplan_json) is None
+
+
+def test_extract_general_description__missing_weekplans_returns_none():
+    assert extract_easyiq_skoleportal_general_description({}) is None
+    assert extract_easyiq_skoleportal_general_description(None) is None
 
 
 # --- build_easyiq_legacy_ugeplan -----------------------------------------

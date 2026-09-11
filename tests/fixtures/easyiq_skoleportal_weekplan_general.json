@@ -1,0 +1,16 @@
+{
+    "Show": false,
+    "TextId": "",
+    "Text": "",
+    "IsVisible": false,
+    "Beskrivelse": "Generelt om ugen",
+    "WeekPlans": [
+        {
+            "ActivityName": "0C",
+            "TextId": "b73aaec7-3b42-4291-baca-db34a9241f2f",
+            "Text": "<p>Kære forældre</p><p>God uge til jer alle.</p>",
+            "IsVisible": true,
+            "Beskrivelse": "Generelt om ugen"
+        }
+    ]
+}

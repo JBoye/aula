@@ -46,7 +46,7 @@ EASYIQ_WIDGETS = ("0001", "0128", "00142", "0142")
 
 DANISH_WEEKDAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"]
 
-EMPTY_UGEPLAN = {"week": None, "days": [], "notices": []}
+EMPTY_UGEPLAN = {"week": None, "days": [], "notices": [], "general": None}
 
 
 def _iso_date_for_week_day(week, day_name):
@@ -120,6 +120,33 @@ def extract_ugeplan_notice_title(description):
         return title
     text = BeautifulSoup(description or "", "html.parser").get_text("\n")
     return next((line.strip() for line in text.splitlines() if line.strip()), "")
+
+
+def extract_easyiq_skoleportal_general_description(weekplan_json, activity_name=None):
+    """Pick the general week text out of an EasyIQ Skoleportal /Calendar/WeekPlan response.
+
+    The response holds one entry per class/activity under "WeekPlans"; pick the one
+    matching activity_name when given, otherwise the first visible entry.
+    """
+    if not isinstance(weekplan_json, dict):
+        return None
+    entries = weekplan_json.get("WeekPlans") or []
+    if not isinstance(entries, list):
+        return None
+
+    candidates = [entry for entry in entries if isinstance(entry, dict)]
+    if activity_name:
+        matching = [entry for entry in candidates if entry.get("ActivityName") == activity_name]
+        if matching:
+            candidates = matching
+
+    for entry in candidates:
+        if not entry.get("IsVisible", True):
+            continue
+        text = (entry.get("Text") or "").strip()
+        if text:
+            return text
+    return None
 
 
 def is_ugeplan_all_day(value):
@@ -213,10 +240,10 @@ def parse_mu_ugebrev_html(indhold, week):
             desc_parts.append(str(node))
     flush_lesson()
 
-    return {"week": week, "days": days, "notices": notices}
+    return {"week": week, "days": days, "notices": notices, "general": None}
 
 
-def build_easyiq_skoleportal_ugeplan(events_list, week):
+def build_easyiq_skoleportal_ugeplan(events_list, week, general_description=None):
     """Group raw EasyIQ Skoleportal CalendarGetWeekplanEvents items into the shared ugeplan schema."""
     events_by_day = {}
     notices = []
@@ -275,7 +302,7 @@ def build_easyiq_skoleportal_ugeplan(events_list, week):
             }
         )
 
-    return {"week": week, "days": days, "notices": notices}
+    return {"week": week, "days": days, "notices": notices, "general": general_description}
 
 
 def build_easyiq_legacy_ugeplan(events, week):
@@ -329,7 +356,7 @@ def build_easyiq_legacy_ugeplan(events, week):
             )
 
     days = sorted(days_by_date.values(), key=lambda d: d["date"])
-    return {"week": week, "days": days, "notices": notices}
+    return {"week": week, "days": days, "notices": notices, "general": None}
 
 
 def build_meebook_ugeplan(week_plan, week):
@@ -368,7 +395,7 @@ def build_meebook_ugeplan(week_plan, week):
             }
         )
 
-    return {"week": week, "days": days, "notices": []}
+    return {"week": week, "days": days, "notices": [], "general": None}
 
 
 class Client:
@@ -1407,6 +1434,7 @@ class Client:
                         login_id = None
                         activity_filter = None
                         events_list = []
+                        general_description = None
                         skoleportal_success = False
                         skoleportal_auth_response = False
 
@@ -1497,11 +1525,32 @@ class Client:
                                         _LOGGER.debug("Could not parse events JSON for %s: %s (text: %r)", first_name, json_e, events_resp.text[:200])
                                 else:
                                     _LOGGER.debug("EasyIQ Skoleportal returned non-200 response for %s: %r", first_name, events_resp.text[:200])
+
+                                try:
+                                    weekplan_resp = easyiq_session.get(
+                                        EASYIQ_SKOLEPORTAL_API + "/Calendar/WeekPlan",
+                                        headers=easyiq_headers,
+                                        params=params,
+                                        verify=True,
+                                        timeout=10,
+                                    )
+                                    if weekplan_resp.status_code == 200:
+                                        general_description = extract_easyiq_skoleportal_general_description(
+                                            weekplan_resp.json()
+                                        )
+                                    else:
+                                        _LOGGER.debug(
+                                            "EasyIQ Skoleportal general week plan returned non-200 response for %s: %r",
+                                            first_name,
+                                            weekplan_resp.text[:200],
+                                        )
+                                except Exception as weekplan_err:
+                                    _LOGGER.debug("Could not fetch EasyIQ Skoleportal general week plan for %s: %s", first_name, weekplan_err)
                         except Exception as err:
                             _LOGGER.warning("EasyIQ Skoleportal API call failed for %s: %s", first_name, err)
 
                         if skoleportal_success:
-                            structured = build_easyiq_skoleportal_ugeplan(events_list, week)
+                            structured = build_easyiq_skoleportal_ugeplan(events_list, week, general_description)
                             if thisnext == "this":
                                 self.ugep_attr[first_name] = structured
                             elif thisnext == "next":
